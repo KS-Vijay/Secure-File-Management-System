@@ -44,14 +44,17 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [encrypt, setEncrypt] = useState(false);
   const [encryptionResult, setEncryptionResult] = useState<EncryptionResult | null>(null);
   const [encrypted, setEncrypted] = useState(false);
-  const [fileDetails, setFileDetails: any] = useState(null);
+  const [fileDetails, setFileDetails] = useState<{
+    type: string,
+    size: string,
+    lastModified: string
+  } | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const handleClose = () => {
-    // Reset all state values
     setFile(null);
     setPreview(null);
     setIsEncrypting(false);
@@ -70,14 +73,12 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       setEncrypted(false);
       setEncryptionResult(null);
       
-      // Set file details
       setFileDetails({
         type: selectedFile.type || 'Unknown',
         size: (selectedFile.size / 1024).toFixed(2) + ' KB',
         lastModified: new Date(selectedFile.lastModified).toLocaleString()
       });
       
-      // Generate preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -94,14 +95,12 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       setEncrypted(false);
       setEncryptionResult(null);
       
-      // Set file details
       setFileDetails({
         type: droppedFile.type || 'Unknown',
         size: (droppedFile.size / 1024).toFixed(2) + ' KB',
         lastModified: new Date(droppedFile.lastModified).toLocaleString()
       });
       
-      // Generate preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -155,7 +154,6 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         encrypt: encrypt
       };
       
-      // Encrypt file if encryption is enabled
       if (encrypt) {
         setIsEncrypting(true);
         
@@ -170,11 +168,10 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
               encryptionKey: encryptionResult.encryptionKey,
               iv: encryptionResult.iv,
               checksum: encryptionResult.checksum,
-              originalFile: file // Keep reference to original file
+              originalFile: file
             }
           };
           
-          // Set encryption result for displaying to user
           setEncryptionResult(encryptionResult);
           setEncrypted(true);
         } catch (encErr) {
@@ -190,7 +187,6 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         }
       }
       
-      // Call onUpload with the file data
       if (onUpload) {
         await onUpload(uploadData);
       }
