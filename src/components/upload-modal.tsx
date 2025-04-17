@@ -463,5 +463,3 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     </Dialog>
   );
 }
-
-export type { UploadFileData };
