@@ -1,4 +1,3 @@
-
 import CryptoJS from 'crypto-js';
 
 /**
@@ -59,16 +58,16 @@ export const encryptFile = async (file: File): Promise<EncryptionResult> => {
     // Calculate checksum of original file
     const checksum = await calculateChecksum(file);
     
-    // Combine key and IV with a separator for easier storage
-    const combinedKey = `${key}.${iv}`;
+    // Store key and IV separately for clarity
+    const encryptionKey = key;
     
-    console.log("Encryption successful, key generated:", combinedKey);
+    console.log("Encryption successful, key generated:", encryptionKey, "IV:", iv);
     
     return {
       encryptedFile,
       algorithm: 'AES-256-CBC',
-      encryptionKey: combinedKey,
-      iv,
+      encryptionKey: encryptionKey,
+      iv: iv,
       checksum
     };
   } catch (error) {
@@ -99,10 +98,9 @@ export const decryptFile = async (
     const keyBytes = CryptoJS.enc.Base64.parse(keyString);
     const ivBytes = CryptoJS.enc.Base64.parse(ivString);
     
-    // Convert the file data to a format CryptoJS can use
+    // Convert encrypted data to CryptoJS format
     const wordArray = arrayBufferToWordArray(fileBuffer);
-    const encryptedHex = CryptoJS.enc.Hex.stringify(wordArray);
-    const encryptedBase64 = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Hex.parse(encryptedHex));
+    const encryptedBase64 = CryptoJS.enc.Base64.stringify(wordArray);
     
     // Decrypt the data
     const decrypted = CryptoJS.AES.decrypt(encryptedBase64, keyBytes, {
@@ -242,11 +240,9 @@ export function wordArrayToArrayBuffer(wordArray: CryptoJS.lib.WordArray): Array
   const buff = new ArrayBuffer(sigBytes);
   const view = new DataView(buff);
   
-  for (let i = 0; i < sigBytes; i += 4) {
-    const val = words[i >>> 2];
-    if (val !== undefined) {
-      view.setUint32(i, val);
-    }
+  for (let i = 0; i < sigBytes; i += 1) {
+    const byte = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+    view.setUint8(i, byte);
   }
   
   return buff;
