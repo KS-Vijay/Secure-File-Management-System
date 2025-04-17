@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Download, File, FileText, Image, RefreshCw, Unlock, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,6 @@ export function FilePreview({
       try {
         if (!file) throw new Error("No file provided");
         
-        // If file requires decryption, don't try to generate preview
         if (requiresDecryption) {
           setLoading(false);
           return;
@@ -54,7 +52,6 @@ export function FilePreview({
     
     loadPreview();
     
-    // Cleanup
     return () => {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
@@ -64,7 +61,6 @@ export function FilePreview({
   
   const handleDownloadOriginal = () => {
     if (file && !requiresDecryption) {
-      // Always download the decrypted/original file when available
       downloadFile(file);
       toast.success(`${file.name} is being downloaded`);
     } else if (onDownload) {
@@ -93,7 +89,6 @@ export function FilePreview({
     }
   };
   
-  // Get appropriate preview component based on file type
   const renderPreview = () => {
     if (loading) {
       return (
@@ -191,7 +186,6 @@ export function FilePreview({
       );
     }
     
-    // Default preview
     return (
       <div className="flex flex-col items-center justify-center h-full p-8">
         <FileText className="h-16 w-16 text-muted-foreground mb-4" />

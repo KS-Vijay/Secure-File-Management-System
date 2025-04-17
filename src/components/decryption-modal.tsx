@@ -99,25 +99,9 @@ export function DecryptionModal({ isOpen, onClose }: DecryptionModalProps) {
     try {
       console.log("Attempting decryption with key:", encryptionKey);
       
-      // Parse the encryption key format
-      let actualKey, iv;
-      
-      if (encryptionKey.includes('.')) {
-        const parts = encryptionKey.split('.');
-        if (parts.length >= 2) {
-          iv = parts.pop(); // Get the last part as IV
-          actualKey = parts.join('.'); // Join the rest as the key
-        } else {
-          throw new Error("Invalid key format");
-        }
-      } else {
-        throw new Error("Invalid key format - missing separator");
-      }
-      
-      console.log("Parsed key:", actualKey);
-      console.log("Parsed IV:", iv);
-      
-      const decrypted = await decryptFile(encryptedFile, actualKey, iv);
+      // Use the combined key format (key.iv) directly
+      // No need to parse it here, the decryptFile function will handle it
+      const decrypted = await decryptFile(encryptedFile, encryptionKey);
       setDecryptedFile(decrypted);
       
       toast({

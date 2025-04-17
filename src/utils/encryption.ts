@@ -1,4 +1,3 @@
-
 import CryptoJS from 'crypto-js';
 
 /**
@@ -38,6 +37,9 @@ export const encryptFile = async (file: File): Promise<EncryptionResult> => {
     const key = CryptoJS.enc.Base64.stringify(keyBytes);
     const iv = CryptoJS.enc.Base64.stringify(ivBytes);
     
+    // Combine key and IV into a single string with a separator
+    const combinedKey = `${key}.${iv}`;
+    
     // Convert the file data to a WordArray that CryptoJS can use
     const wordArray = arrayBufferToWordArray(fileBuffer);
     
@@ -59,15 +61,12 @@ export const encryptFile = async (file: File): Promise<EncryptionResult> => {
     // Calculate checksum of original file
     const checksum = await calculateChecksum(file);
     
-    // Store key and IV separately for clarity
-    const encryptionKey = key;
-    
-    console.log("Encryption successful, key generated:", encryptionKey, "IV:", iv);
+    console.log("Encryption successful, combined key generated:", combinedKey);
     
     return {
       encryptedFile,
       algorithm: 'AES-256-CBC',
-      encryptionKey: encryptionKey,
+      encryptionKey: combinedKey,
       iv: iv,
       checksum
     };
@@ -80,24 +79,40 @@ export const encryptFile = async (file: File): Promise<EncryptionResult> => {
 /**
  * Decrypts an encrypted file
  * @param encryptedFile Encrypted file
- * @param keyString Base64 encryption key
- * @param ivString Base64 IV
+ * @param keyString Combined Base64 encryption key with IV (format: "key.iv")
+ * @param ivString Optional Base64 IV if not included in keyString
  * @returns Promise with decrypted file
  */
 export const decryptFile = async (
   encryptedFile: File, 
   keyString: string, 
-  ivString: string
+  ivString?: string
 ): Promise<File> => {
   try {
-    console.log("Starting decryption with key:", keyString, "and IV:", ivString);
+    console.log("Starting decryption with combined key:", keyString);
     
     // Convert file to array buffer
     const fileBuffer = await encryptedFile.arrayBuffer();
     
+    // Parse key and IV from the combined string
+    let actualKey = keyString;
+    let actualIv = ivString || '';
+    
+    // If the key contains a dot, it's a combined key+IV
+    if (keyString.includes('.') && !ivString) {
+      const parts = keyString.split('.');
+      if (parts.length >= 2) {
+        actualKey = parts[0];
+        // Last part is the IV
+        actualIv = parts[parts.length - 1];
+      }
+    }
+    
+    console.log("Parsed key:", actualKey, "IV:", actualIv);
+    
     // Parse key and IV
-    const keyBytes = CryptoJS.enc.Base64.parse(keyString);
-    const ivBytes = CryptoJS.enc.Base64.parse(ivString);
+    const keyBytes = CryptoJS.enc.Base64.parse(actualKey);
+    const ivBytes = CryptoJS.enc.Base64.parse(actualIv);
     
     // Convert encrypted data to base64 string for CryptoJS
     const encryptedBase64 = arrayBufferToBase64(fileBuffer);

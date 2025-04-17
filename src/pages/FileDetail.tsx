@@ -77,25 +77,14 @@ export default function FileDetailsPage() {
     }
   }, [file, id, navigate]);
   
-  const handleDecrypt = async (fileToDecrypt: File, key: string, iv: string) => {
+  const handleDecrypt = async (fileToDecrypt: File, key: string) => {
     if (!fileToDecrypt) return;
     
     setDecrypting(true);
     
     try {
-      // For simplicity, extract IV from the key if it contains it
-      const parts = key.split('.');
-      let actualIv = iv;
-      let actualKey = key;
-      
-      if (parts.length > 1) {
-        // Last part is the IV
-        actualIv = parts[parts.length - 1];
-        // The rest is the key
-        actualKey = parts.slice(0, -1).join('.');
-      }
-      
-      const decrypted = await decryptFile(fileToDecrypt, actualKey, actualIv);
+      // Now we use just the key directly without trying to extract IV separately
+      const decrypted = await decryptFile(fileToDecrypt, key);
       setDecryptedFile(decrypted);
       setFileObject(decrypted); // Set decrypted file as the main file object for preview
       
@@ -197,14 +186,14 @@ export default function FileDetailsPage() {
     }
   };
   
-  // Handle decryption key submission
+  // Handle decryption key submission - simplified to use the single key
   const handleDecryptionKeySubmit = (key: string) => {
-    if (!file.encryptionData || !encryptedFileObject) {
-      toast.error("Missing encryption data or file");
+    if (!encryptedFileObject) {
+      toast.error("Missing file to decrypt");
       return;
     }
     
-    handleDecrypt(encryptedFileObject, key, file.encryptionData.iv);
+    handleDecrypt(encryptedFileObject, key);
   };
   
   // For the component, we need to ensure we're passing a properly typed file object
