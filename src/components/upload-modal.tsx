@@ -78,6 +78,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       setFile(selectedFile);
       setEncrypted(false);
       setEncryptionResult(null);
+      setShowEncryptionConfirmation(false);
       
       setFileDetails({
         type: selectedFile.type || 'Unknown',
@@ -123,6 +124,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       setFile(droppedFile);
       setEncrypted(false);
       setEncryptionResult(null);
+      setShowEncryptionConfirmation(false);
       
       setFileDetails({
         type: droppedFile.type || 'Unknown',
@@ -146,6 +148,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     setFile(null);
     setPreview(null);
     setFileDetails(null);
+    setShowEncryptionConfirmation(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -275,88 +278,6 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         title: "Copied to clipboard",
         description: "Decryption key copied to clipboard",
       });
-    }
-  };
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setEncrypted(false);
-      setEncryptionResult(null);
-      setShowEncryptionConfirmation(false);
-      
-      setFileDetails({
-        type: selectedFile.type || 'Unknown',
-        size: (selectedFile.size / 1024).toFixed(2) + ' KB',
-        lastModified: new Date(selectedFile.lastModified).toLocaleString()
-      });
-      
-      generatePreview(selectedFile);
-    }
-  };
-  
-  const generatePreview = async (file: File) => {
-    try {
-      const previewUrl = await generateFilePreview(file);
-      setPreview(previewUrl);
-    } catch (error) {
-      console.error("Failed to generate preview:", error);
-      setPreview(null);
-    }
-  };
-  
-  const handlePreviewClick = async () => {
-    if (!file) return;
-    
-    try {
-      const content = await generateFilePreview(file);
-      setPreviewContent(content);
-      setIsPreviewModalOpen(true);
-    } catch (error) {
-      console.error("Failed to generate preview:", error);
-      toast({
-        title: "Preview failed",
-        description: "Failed to generate file preview",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile) {
-      setFile(droppedFile);
-      setEncrypted(false);
-      setEncryptionResult(null);
-      setShowEncryptionConfirmation(false);
-      
-      setFileDetails({
-        type: droppedFile.type || 'Unknown',
-        size: (droppedFile.size / 1024).toFixed(2) + ' KB',
-        lastModified: new Date(droppedFile.lastModified).toLocaleString()
-      });
-      
-      generatePreview(droppedFile);
-    }
-  };
-  
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-  
-  const handleBrowseClick = () => {
-    fileInputRef.current?.click();
-  };
-  
-  const handleRemoveFile = () => {
-    setFile(null);
-    setPreview(null);
-    setFileDetails(null);
-    setShowEncryptionConfirmation(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
     }
   };
   
