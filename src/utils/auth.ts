@@ -3,6 +3,7 @@ import SHA256 from "crypto-js/sha256";
 import Base64 from "crypto-js/enc-base64";
 import { v4 as uuidv4 } from "uuid";
 import { logInfo, logSecurity, LogCategory } from './audit-logger';
+import { verifyTOTP } from './mfa';
 
 // User interface
 export interface User {
@@ -270,14 +271,13 @@ function logError(category: LogCategory, message: string, details?: any): void {
   logInfo(category, message, details);
 }
 
-// Verify MFA token
+// Verify MFA token using actual TOTP algorithm
 export const verifyMFA = (userId: string, token: string): boolean => {
   const user = users.find(u => u.id === userId);
   if (!user || !user.mfaSecret) return false;
   
-  // In a real app, this would verify the token against user's secret using TOTP algorithm
-  // For demo purposes, we'll use a simple check (any 6-digit number)
-  const isValid = /^\d{6}$/.test(token);
+  // Use the mfa.ts verifyTOTP function for actual TOTP verification
+  const isValid = verifyTOTP(token, user.mfaSecret);
   
   if (isValid) {
     logInfo(LogCategory.AUTH, "MFA verification successful", { email: user.email });

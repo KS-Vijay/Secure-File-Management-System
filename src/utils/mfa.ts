@@ -1,6 +1,7 @@
 
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
+import * as OTPAuth from 'otpauth';
 
 // Base32 character set (RFC 4648)
 const BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -33,10 +34,31 @@ export const generateMFAQRCode = async (
   }
 };
 
-// In a real app, we would verify the TOTP code here using a proper TOTP algorithm
-// For demo purposes, we'll use a simple validation (any 6-digit number)
+// Verify TOTP code using the otpauth library
 export const verifyTOTP = (code: string, secret: string): boolean => {
-  // For a real implementation, we would use a TOTP library
-  // This is just a placeholder that checks if the code is 6 digits
-  return /^\d{6}$/.test(code);
+  try {
+    // Create a new TOTP object
+    const totp = new OTPAuth.TOTP({
+      issuer: 'SecureVault',
+      label: 'SecureVault',
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      secret: OTPAuth.Secret.fromBase32(secret)
+    });
+    
+    // Generate the current token to compare with user input
+    const currentToken = totp.generate();
+    
+    // For a slightly better user experience, also check window of +/- 1 period (30 seconds)
+    // This helps if user's device clock is slightly off
+    const previousToken = totp.generate({ timestamp: Date.now() - 30000 });
+    const nextToken = totp.generate({ timestamp: Date.now() + 30000 });
+    
+    // Check if the provided code matches any of the valid tokens
+    return code === currentToken || code === previousToken || code === nextToken;
+  } catch (error) {
+    console.error('TOTP verification error:', error);
+    return false;
+  }
 };

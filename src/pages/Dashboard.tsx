@@ -41,6 +41,13 @@ export default function Dashboard() {
     return () => clearInterval(refreshInterval);
   }, [navigate]);
   
+  // Add this new useEffect to load files when the component mounts or when route changes
+  useEffect(() => {
+    if (isAuthenticated()) {
+      loadFiles();
+    }
+  }, []);
+  
   const loadFiles = () => {
     try {
       // Get all files

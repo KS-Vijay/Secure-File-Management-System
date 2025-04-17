@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -14,7 +13,8 @@ import {
   completeMFALogin, 
   isAuthenticated,
   initializeDefaultUser,
-  setupMFA
+  setupMFA,
+  verifyMFA
 } from "@/utils/auth";
 import { generateMFASecret, generateMFAQRCode, verifyTOTP } from "@/utils/mfa";
 import { logSecurity, LogCategory } from "@/utils/audit-logger";
@@ -74,10 +74,11 @@ export function Login() {
           return;
         }
         
-        const mfaResult = verifyTOTP(mfaCode, "demo-secret");
+        // Use the proper MFA verification
+        const mfaResult = verifyMFA(userId || "", mfaCode);
         
-        if (mfaResult && userId) {
-          const success = completeMFALogin(userId);
+        if (mfaResult) {
+          const success = completeMFALogin(userId || "");
           
           if (success) {
             logSecurity(LogCategory.AUTH, "User login successful with MFA", { email });

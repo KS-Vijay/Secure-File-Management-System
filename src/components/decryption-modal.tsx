@@ -97,25 +97,25 @@ export function DecryptionModal({ isOpen, onClose }: DecryptionModalProps) {
     setIsDecrypting(true);
     
     try {
-      // For simplicity, extract IV from the key (last part)
-      const parts = encryptionKey.split('.');
-      let iv = '';
-      let actualKey = encryptionKey;
+      console.log("Attempting decryption with key:", encryptionKey);
       
-      if (parts.length > 1) {
-        // Last part is the IV
-        iv = parts[parts.length - 1];
-        // The rest is the key
-        actualKey = parts.slice(0, -1).join('.');
+      // Parse the encryption key format
+      let actualKey, iv;
+      
+      if (encryptionKey.includes('.')) {
+        const parts = encryptionKey.split('.');
+        if (parts.length >= 2) {
+          iv = parts.pop(); // Get the last part as IV
+          actualKey = parts.join('.'); // Join the rest as the key
+        } else {
+          throw new Error("Invalid key format");
+        }
       } else {
-        toast({
-          title: "Invalid key format",
-          description: "The encryption key doesn't contain the initialization vector",
-          variant: "destructive",
-        });
-        setIsDecrypting(false);
-        return;
+        throw new Error("Invalid key format - missing separator");
       }
+      
+      console.log("Parsed key:", actualKey);
+      console.log("Parsed IV:", iv);
       
       const decrypted = await decryptFile(encryptedFile, actualKey, iv);
       setDecryptedFile(decrypted);
