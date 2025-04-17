@@ -289,5 +289,5 @@ export function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   return btoa(binary);
 }
 
-// Export types
+// Export types only, removing duplicate exports
 export type { EncryptionResult, DecryptionResult };

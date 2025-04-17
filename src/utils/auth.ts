@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import SHA256 from "crypto-js/sha256";
 import Base64 from "crypto-js/enc-base64";
@@ -370,4 +369,4 @@ export const initializeDefaultUser = (): void => {
 initializeDefaultUser();
 
 // Export types
-export type { Session, User };
+export type { Session };

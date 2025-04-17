@@ -163,7 +163,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Upload File</DialogTitle>
@@ -264,7 +264,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
               </CardContent>
             </Card>
             
-            <Alert variant="warning">
+            <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 This key will only be shown once. Make sure to save it in a secure location.

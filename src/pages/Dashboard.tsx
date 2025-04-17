@@ -12,6 +12,7 @@ import { isAuthenticated } from "@/utils/auth";
 import { useNavigate } from "react-router-dom";
 import { getAllFiles, FileInfo } from "@/utils/file-storage";
 import { toast } from "sonner";
+import { logInfo, LogCategory } from "@/utils/audit-logger";
 
 export default function Dashboard() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -46,6 +47,9 @@ export default function Dashboard() {
       const allFiles = getAllFiles();
       console.log("Loaded files:", allFiles.length);
       setFiles(allFiles);
+      
+      // Log file load operation
+      logInfo(LogCategory.FILE, `Loaded ${allFiles.length} files in dashboard`, {});
     } catch (error) {
       console.error("Error loading files:", error);
       toast.error("Failed to load files");

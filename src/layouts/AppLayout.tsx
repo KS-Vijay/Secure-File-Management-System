@@ -58,7 +58,9 @@ export default function AppLayout() {
     };
   }, [navigate]);
   
-  const handleUpload = async (fileData: UploadFileData) => {
+  const handleUpload = async (fileData?: UploadFileData) => {
+    if (!fileData) return;
+    
     const { file, encrypt, encryptionData } = fileData;
     
     try {
@@ -124,6 +126,9 @@ export default function AppLayout() {
       });
       
       toast.success(`${file.name} has been uploaded ${encrypt ? 'with encryption' : ''}`);
+      
+      // Navigate to dashboard to show the newly uploaded file
+      navigate("/dashboard");
       
       // Close modal when done
       setIsUploadModalOpen(false);
