@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import {
   Dialog,
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Upload, File, X, Copy, Shield, Lock, Unlock, Download, Check, AlertTriangle, Eye, Image as ImageIcon, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { encryptFile, EncryptionResult, generateFilePreview } from "@/utils/encryption";
+import { encryptFile, EncryptionResult, generateFilePreview, downloadFile } from "@/utils/encryption";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +53,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
   const [tags, setTags] = useState<string[]>([]);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [showEncryptionConfirmation, setShowEncryptionConfirmation] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -66,6 +68,7 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     setFileDetails(null);
     setTags([]);
     setIsPreviewModalOpen(false);
+    setShowEncryptionConfirmation(false);
     onClose();
   };
   
@@ -165,6 +168,39 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
+  const handleEncrypt = async () => {
+    if (!file) return;
+    
+    try {
+      setIsEncrypting(true);
+      
+      try {
+        const encryptionResult = await encryptFile(file);
+        setEncryptionResult(encryptionResult);
+        setEncrypted(true);
+        setShowEncryptionConfirmation(true); // Show confirmation screen with key
+      } catch (encErr) {
+        console.error("Encryption failed:", encErr);
+        toast({
+          title: "Encryption failed",
+          description: "Failed to encrypt file",
+          variant: "destructive",
+        });
+        setIsEncrypting(false);
+        return;
+      }
+    } catch (error) {
+      console.error("Encryption process failed:", error);
+      toast({
+        title: "Process failed",
+        description: "An error occurred during encryption",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEncrypting(false);
+    }
+  };
+
   const handleUpload = async () => {
     if (!file) return;
     
@@ -177,36 +213,33 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       };
       
       if (encrypt) {
-        setIsEncrypting(true);
+        if (!showEncryptionConfirmation) {
+          // If we haven't encrypted yet, do it and show confirmation
+          await handleEncrypt();
+          return;
+        }
         
-        try {
-          const encryptionResult = await encryptFile(file);
-          
-          uploadData = {
-            file: encryptionResult.encryptedFile,
-            encrypt: true,
-            encryptionData: {
-              algorithm: encryptionResult.algorithm,
-              encryptionKey: encryptionResult.encryptionKey,
-              iv: encryptionResult.iv,
-              checksum: encryptionResult.checksum,
-              originalFile: file
-            }
-          };
-          
-          setEncryptionResult(encryptionResult);
-          setEncrypted(true);
-        } catch (encErr) {
-          console.error("Encryption failed:", encErr);
+        if (!encryptionResult) {
           toast({
-            title: "Encryption failed",
-            description: "Failed to encrypt file",
+            title: "Encryption required",
+            description: "Please encrypt the file before uploading",
             variant: "destructive",
           });
           setIsUploading(false);
-          setIsEncrypting(false);
           return;
         }
+        
+        uploadData = {
+          file: encryptionResult.encryptedFile,
+          encrypt: true,
+          encryptionData: {
+            algorithm: encryptionResult.algorithm,
+            encryptionKey: encryptionResult.encryptionKey,
+            iv: encryptionResult.iv,
+            checksum: encryptionResult.checksum,
+            originalFile: file
+          }
+        };
       }
       
       if (onUpload) {
@@ -221,20 +254,12 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
       });
     } finally {
       setIsUploading(false);
-      setIsEncrypting(false);
     }
   };
   
   const handleDownloadEncrypted = () => {
     if (encryptionResult?.encryptedFile) {
-      const url = URL.createObjectURL(encryptionResult.encryptedFile);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = encryptionResult.encryptedFile.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadFile(encryptionResult.encryptedFile);
       
       toast({
         title: "Download started",
@@ -250,6 +275,88 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
         title: "Copied to clipboard",
         description: "Decryption key copied to clipboard",
       });
+    }
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setEncrypted(false);
+      setEncryptionResult(null);
+      setShowEncryptionConfirmation(false);
+      
+      setFileDetails({
+        type: selectedFile.type || 'Unknown',
+        size: (selectedFile.size / 1024).toFixed(2) + ' KB',
+        lastModified: new Date(selectedFile.lastModified).toLocaleString()
+      });
+      
+      generatePreview(selectedFile);
+    }
+  };
+  
+  const generatePreview = async (file: File) => {
+    try {
+      const previewUrl = await generateFilePreview(file);
+      setPreview(previewUrl);
+    } catch (error) {
+      console.error("Failed to generate preview:", error);
+      setPreview(null);
+    }
+  };
+  
+  const handlePreviewClick = async () => {
+    if (!file) return;
+    
+    try {
+      const content = await generateFilePreview(file);
+      setPreviewContent(content);
+      setIsPreviewModalOpen(true);
+    } catch (error) {
+      console.error("Failed to generate preview:", error);
+      toast({
+        title: "Preview failed",
+        description: "Failed to generate file preview",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) {
+      setFile(droppedFile);
+      setEncrypted(false);
+      setEncryptionResult(null);
+      setShowEncryptionConfirmation(false);
+      
+      setFileDetails({
+        type: droppedFile.type || 'Unknown',
+        size: (droppedFile.size / 1024).toFixed(2) + ' KB',
+        lastModified: new Date(droppedFile.lastModified).toLocaleString()
+      });
+      
+      generatePreview(droppedFile);
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+  
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+  
+  const handleRemoveFile = () => {
+    setFile(null);
+    setPreview(null);
+    setFileDetails(null);
+    setShowEncryptionConfirmation(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
   
@@ -283,7 +390,109 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
           </DialogDescription>
         </DialogHeader>
         
-        {!encrypted ? (
+        {showEncryptionConfirmation ? (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center">
+                  <Shield className="h-4 w-4 mr-2 text-green-500" />
+                  File Encrypted Successfully
+                </CardTitle>
+                <CardDescription>
+                  Your file has been encrypted. Save your decryption key before continuing.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="key" className="text-sm">Decryption Key</Label>
+                  <div className="flex">
+                    <Input
+                      id="key"
+                      value={encryptionResult?.encryptionKey || ''}
+                      readOnly
+                      className="flex-1 font-mono text-sm"
+                    />
+                    <Button 
+                      variant="outline" 
+                      className="ml-2"
+                      onClick={handleCopyToClipboard}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    You will need this key to decrypt your file later.
+                  </p>
+                </div>
+                
+                {encryptionResult?.iv && (
+                  <div className="space-y-2">
+                    <Label htmlFor="iv" className="text-sm">IV (Initialization Vector)</Label>
+                    <div className="flex">
+                      <Input
+                        id="iv"
+                        value={encryptionResult.iv}
+                        readOnly
+                        className="flex-1 font-mono text-sm"
+                      />
+                      <Button 
+                        variant="outline" 
+                        className="ml-2"
+                        onClick={() => {
+                          if (encryptionResult?.iv) {
+                            navigator.clipboard.writeText(encryptionResult.iv);
+                            toast({
+                              title: "Copied to clipboard",
+                              description: "IV copied to clipboard",
+                            });
+                          }
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      You may need both the key and IV to decrypt your file.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="flex justify-between">
+                  <Button variant="outline" size="sm" onClick={handleDownloadEncrypted}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Encrypted File
+                  </Button>
+                  
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={handleUpload}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <>
+                        <Upload className="h-4 w-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Continue & Upload
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                This key will only be shown once. Make sure to save it in a secure location.
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : !encrypted ? (
           <div className="space-y-4 py-2">
             {!file ? (
               <div 
@@ -409,16 +618,16 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                 </div>
                 
                 <Button
-                  onClick={handleUpload}
+                  onClick={encrypt ? handleEncrypt : handleUpload}
                   className="w-full"
-                  disabled={isUploading}
+                  disabled={isUploading || isEncrypting}
                 >
-                  {isUploading ? (
+                  {isUploading || isEncrypting ? (
                     <>
                       {isEncrypting ? (
                         <>
                           <Lock className="h-4 w-4 mr-2 animate-spin" />
-                          Encrypting and Uploading...
+                          Encrypting...
                         </>
                       ) : (
                         <>
@@ -429,109 +638,24 @@ export function UploadModal({ isOpen, onClose, onUpload }: UploadModalProps) {
                     </>
                   ) : (
                     <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload {encrypt ? "Encrypted " : ""}File
+                      {encrypt ? (
+                        <>
+                          <Lock className="h-4 w-4 mr-2" />
+                          Encrypt File
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload File
+                        </>
+                      )}
                     </>
                   )}
                 </Button>
               </div>
             )}
           </div>
-        ) : (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center">
-                  <Shield className="h-4 w-4 mr-2 text-green-500" />
-                  File Encrypted Successfully
-                </CardTitle>
-                <CardDescription>
-                  Your file has been encrypted and uploaded.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="key" className="text-sm">Decryption Key</Label>
-                  <div className="flex">
-                    <Input
-                      id="key"
-                      value={encryptionResult?.encryptionKey || ''}
-                      readOnly
-                      className="flex-1 font-mono text-sm"
-                    />
-                    <Button 
-                      variant="outline" 
-                      className="ml-2"
-                      onClick={handleCopyToClipboard}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    You will need this key to decrypt your file later.
-                  </p>
-                </div>
-                
-                {encryptionResult?.iv && (
-                  <div className="space-y-2">
-                    <Label htmlFor="iv" className="text-sm">IV (Initialization Vector)</Label>
-                    <div className="flex">
-                      <Input
-                        id="iv"
-                        value={encryptionResult.iv}
-                        readOnly
-                        className="flex-1 font-mono text-sm"
-                      />
-                      <Button 
-                        variant="outline" 
-                        className="ml-2"
-                        onClick={() => {
-                          if (encryptionResult?.iv) {
-                            navigator.clipboard.writeText(encryptionResult.iv);
-                            toast({
-                              title: "Copied to clipboard",
-                              description: "IV copied to clipboard",
-                            });
-                          }
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      You may need both the key and IV to decrypt your file.
-                    </p>
-                  </div>
-                )}
-                
-                <div className="flex justify-between">
-                  <Button variant="outline" size="sm" onClick={handleDownloadEncrypted}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Encrypted File
-                  </Button>
-                  
-                  <Button 
-                    variant="default" 
-                    size="sm"
-                    onClick={() => {
-                      handleClose();
-                    }}
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Done
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                This key will only be shown once. Make sure to save it in a secure location.
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
+        ) : null}
         
         {isPreviewModalOpen && file && (
           <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>

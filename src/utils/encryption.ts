@@ -1,3 +1,4 @@
+
 import CryptoJS from 'crypto-js';
 
 /**
@@ -98,9 +99,8 @@ export const decryptFile = async (
     const keyBytes = CryptoJS.enc.Base64.parse(keyString);
     const ivBytes = CryptoJS.enc.Base64.parse(ivString);
     
-    // Convert encrypted data to CryptoJS format
-    const wordArray = arrayBufferToWordArray(fileBuffer);
-    const encryptedBase64 = CryptoJS.enc.Base64.stringify(wordArray);
+    // Convert encrypted data to base64 string for CryptoJS
+    const encryptedBase64 = arrayBufferToBase64(fileBuffer);
     
     // Decrypt the data
     const decrypted = CryptoJS.AES.decrypt(encryptedBase64, keyBytes, {
@@ -184,8 +184,8 @@ export const generateFilePreview = async (file: File): Promise<string> => {
     // For text files, read the content
     if (file.type === 'text/plain' || 
         file.type === 'text/html' || 
-        file.type === 'text/css' || 
         file.type === 'application/json' ||
+        file.type === 'text/css' || 
         file.type === 'text/javascript') {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -208,14 +208,19 @@ export const generateFilePreview = async (file: File): Promise<string> => {
  * @param file File to download
  */
 export const downloadFile = (file: File): void => {
-  const url = URL.createObjectURL(file);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = file.name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  try {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Download failed:", error);
+    throw new Error("Failed to download file");
+  }
 };
 
 // Convert ArrayBuffer to WordArray (for CryptoJS)
